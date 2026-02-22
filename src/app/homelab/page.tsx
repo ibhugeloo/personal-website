@@ -1,0 +1,252 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Plus, ExternalLink, X } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
+import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/context/auth-context"
+
+type ServiceCategory = "Virtualisation" | "Containers" | "Réseau" | "Sécurité" | "Productivité" | "Monitoring" | "Autre"
+
+type Service = {
+    id: string
+    name: string
+    url: string
+    description: string
+    category: ServiceCategory
+    emoji: string
+}
+
+const CATEGORIES: ServiceCategory[] = ["Virtualisation", "Containers", "Réseau", "Sécurité", "Productivité", "Monitoring", "Autre"]
+
+const CATEGORY_COLORS: Record<ServiceCategory, string> = {
+    Virtualisation: "text-blue-500 bg-blue-500/10 border-blue-500/20",
+    Containers: "text-cyan-500 bg-cyan-500/10 border-cyan-500/20",
+    Réseau: "text-green-500 bg-green-500/10 border-green-500/20",
+    Sécurité: "text-red-500 bg-red-500/10 border-red-500/20",
+    Productivité: "text-purple-500 bg-purple-500/10 border-purple-500/20",
+    Monitoring: "text-orange-500 bg-orange-500/10 border-orange-500/20",
+    Autre: "text-muted-foreground bg-muted/50 border-border",
+}
+
+const EMPTY_FORM: Omit<Service, "id"> = {
+    name: "",
+    url: "",
+    description: "",
+    category: "Autre",
+    emoji: "⚙️",
+}
+
+export default function HomelabPage() {
+    const { user } = useAuth()
+    const supabase = createClient()
+    const [services, setServices] = useState<Service[]>([])
+    const [showModal, setShowModal] = useState(false)
+    const [editingId, setEditingId] = useState<string | null>(null)
+    const [form, setForm] = useState<Omit<Service, "id">>(EMPTY_FORM)
+
+    useEffect(() => {
+        supabase
+            .from("homelab_services")
+            .select("*")
+            .order("created_at", { ascending: true })
+            .then(({ data }) => {
+                if (data) setServices(data as Service[])
+            })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+
+    function openAdd() {
+        setEditingId(null)
+        setForm(EMPTY_FORM)
+        setShowModal(true)
+    }
+
+    function openEdit(service: Service) {
+        if (!user) return
+        setEditingId(service.id)
+        setForm({ name: service.name, url: service.url, description: service.description, category: service.category, emoji: service.emoji })
+        setShowModal(true)
+    }
+
+    async function handleDelete(id: string) {
+        await supabase.from("homelab_services").delete().eq("id", id)
+        setServices((prev) => prev.filter((s) => s.id !== id))
+    }
+
+    async function handleSubmit(e: React.FormEvent) {
+        e.preventDefault()
+        if (!form.name.trim()) return
+
+        if (editingId) {
+            const { data } = await supabase
+                .from("homelab_services")
+                .update(form)
+                .eq("id", editingId)
+                .select()
+                .single()
+            if (data) {
+                setServices((prev) => prev.map((s) => (s.id === editingId ? (data as Service) : s)))
+            }
+        } else {
+            const { data } = await supabase
+                .from("homelab_services")
+                .insert(form)
+                .select()
+                .single()
+            if (data) {
+                setServices((prev) => [...prev, data as Service])
+            }
+        }
+        setShowModal(false)
+    }
+
+    return (
+        <div className="space-y-5 max-w-4xl text-base leading-relaxed text-foreground">
+            <div className="space-y-2">
+                <h1 className="text-xl font-semibold tracking-tight">Homelab</h1>
+                <p className="text-muted-foreground">
+                    Toujours un homelab actif sous Proxmox – j'expérimente, je casse et je reconstruis
+                </p>
+            </div>
+
+            <Separator />
+
+            {user && (
+                <Button onClick={openAdd} size="sm" className="gap-2 self-start">
+                    <Plus className="h-4 w-4" />
+                    Ajouter
+                </Button>
+            )}
+
+            {services.length === 0 ? (
+                <div className="text-center py-16 text-muted-foreground">
+                    <p className="text-4xl mb-3">🔧</p>
+                    <p>Aucun service configuré</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {services.map((service) => (
+                        <Card
+                            key={service.id}
+                            className={`group relative hover:shadow-md transition-shadow overflow-hidden ${user ? "cursor-pointer" : ""}`}
+                            onClick={() => user && openEdit(service)}
+                        >
+                            {user && (
+                                <button
+                                    className="absolute top-2 right-2 h-6 w-6 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                    onClick={(e) => { e.stopPropagation(); handleDelete(service.id) }}
+                                    aria-label="Supprimer"
+                                >
+                                    <X className="h-3.5 w-3.5" />
+                                </button>
+                            )}
+                            <CardHeader className="pb-2">
+                                <div className="flex items-center gap-2 pr-8">
+                                    <span className="text-2xl">{service.emoji}</span>
+                                    <CardTitle className="text-base leading-tight">{service.name}</CardTitle>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                <p className="text-xs text-muted-foreground leading-relaxed">{service.description}</p>
+                                <div className="flex items-center justify-between">
+                                    <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${CATEGORY_COLORS[service.category]}`}>
+                                        {service.category}
+                                    </span>
+                                    {service.url && service.url !== "#" && (
+                                        <a href={service.url} target="_blank" rel="noopener noreferrer">
+                                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                                                <ExternalLink className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </a>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            )}
+
+            {/* Modal — admin only */}
+            {showModal && user && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-background border rounded-xl shadow-xl w-full max-w-md p-6 space-y-5">
+                        <div className="flex items-center justify-between">
+                            <h2 className="font-semibold text-lg">{editingId ? "Modifier le service" : "Ajouter un service"}</h2>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowModal(false)}>
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div className="grid grid-cols-[auto_1fr] gap-3 items-center">
+                                <div className="space-y-1">
+                                    <label className="text-xs text-muted-foreground">Emoji</label>
+                                    <input
+                                        type="text"
+                                        value={form.emoji}
+                                        onChange={(e) => setForm({ ...form, emoji: e.target.value })}
+                                        className="w-16 text-center text-2xl border rounded-lg px-2 py-1.5 bg-background"
+                                        maxLength={2}
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-muted-foreground">Nom *</label>
+                                    <input
+                                        type="text"
+                                        value={form.name}
+                                        onChange={(e) => setForm({ ...form, name: e.target.value })}
+                                        placeholder="ex: Proxmox VE"
+                                        required
+                                        className="w-full border rounded-lg px-3 py-1.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs text-muted-foreground">URL</label>
+                                <input
+                                    type="text"
+                                    value={form.url}
+                                    onChange={(e) => setForm({ ...form, url: e.target.value })}
+                                    placeholder="https://proxmox.local:8006"
+                                    className="w-full border rounded-lg px-3 py-1.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs text-muted-foreground">Description</label>
+                                <input
+                                    type="text"
+                                    value={form.description}
+                                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                                    placeholder="Rôle du service"
+                                    className="w-full border rounded-lg px-3 py-1.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs text-muted-foreground">Catégorie</label>
+                                <select
+                                    value={form.category}
+                                    onChange={(e) => setForm({ ...form, category: e.target.value as ServiceCategory })}
+                                    className="w-full border rounded-lg px-3 py-1.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                                >
+                                    {CATEGORIES.map((c) => (
+                                        <option key={c} value={c}>{c}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="flex gap-2 pt-2">
+                                <Button type="button" variant="outline" className="flex-1" onClick={() => setShowModal(false)}>
+                                    Annuler
+                                </Button>
+                                <Button type="submit" className="flex-1">
+                                    {editingId ? "Enregistrer" : "Ajouter"}
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
