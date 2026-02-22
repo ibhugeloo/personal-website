@@ -55,38 +55,6 @@ export default function BusinessPage() {
 
             <Separator />
 
-            {/* Partnership Ugreen */}
-            <div className="space-y-3">
-                <h2 className="text-base font-semibold">Partenariat Ugreen</h2>
-                <div className="p-5 rounded-xl border bg-muted/30 space-y-3">
-                    <div className="flex items-center gap-3">
-                        <span className="text-2xl">🤝</span>
-                        <div>
-                            <p className="font-semibold">Revendeur officiel Ugreen – La Réunion</p>
-                            <p className="text-muted-foreground text-sm">
-                                Ugreen est une marque internationale reconnue pour la qualité de ses accessoires tech :
-                                chargeurs GaN, docks, câbles, stockage, supports et bien plus
-                            </p>
-                        </div>
-                    </div>
-                    <ul className="space-y-1.5">
-                        {[
-                            "Produits conformes aux standards CE, certifiés par les équipementiers",
-                            "Livraison locale à La Réunion (DOM) – délais maîtrisés",
-                            "Service après-vente et conseil personnalisé",
-                            "Tarifs préférentiels pour les entreprises et commandes groupées",
-                        ].map((item) => (
-                            <li key={item} className="flex items-start gap-2">
-                                <span className="mt-2 h-1.5 w-1.5 rounded-full bg-foreground/40 shrink-0" />
-                                {item}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            </div>
-
-            <Separator />
-
             {/* Catalog */}
             <div className="space-y-3">
                 <h2 className="text-base font-semibold">Catalogue</h2>
