@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next"
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ibhugeloo.com"
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://idriss-bhugeloo.labkreol.re"
 
 const PAGES = [
     { path: "/",          priority: 1.0 },

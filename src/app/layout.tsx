@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://ibhugeloo.com"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://idriss-bhugeloo.labkreol.re"),
   title: {
     default: "Idriss Bhugeloo",
     template: "%s — Idriss Bhugeloo",
