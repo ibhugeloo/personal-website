@@ -19,8 +19,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Idriss Bhugeloo",
-  description: "Ingénieur télécom et systèmes. Portfolio et blog.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://ibhugeloo.com"),
+  title: {
+    default: "Idriss Bhugeloo",
+    template: "%s — Idriss Bhugeloo",
+  },
+  description:
+    "Ingénieur télécom et systèmes basé à La Réunion. Développement web, homelab Proxmox, trail et investissement.",
+  openGraph: {
+    type: "website",
+    locale: "fr_FR",
+    siteName: "Idriss Bhugeloo",
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 export default function RootLayout({
@@ -29,7 +42,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="fr">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >

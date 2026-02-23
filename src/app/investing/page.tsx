@@ -1,4 +1,10 @@
+import type { Metadata } from "next"
 import { Separator } from "@/components/ui/separator"
+
+export const metadata: Metadata = {
+    title: "Portefeuille",
+    description: "Répartition de mon portefeuille d'investissement long terme : ETF S&P500 (PEA), actions individuelles (CTO) et Bitcoin (Revolut).",
+}
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 

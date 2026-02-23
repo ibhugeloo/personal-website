@@ -1,4 +1,10 @@
+import type { Metadata } from "next"
 import { Separator } from "@/components/ui/separator"
+
+export const metadata: Metadata = {
+    title: "Goal.re",
+    description: "Goal.re — projet textile construit pièce par pièce, ancré à La Réunion.",
+}
 
 export default function GoalPage() {
     return (

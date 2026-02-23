@@ -1,4 +1,10 @@
+import type { Metadata } from "next"
 import { Separator } from "@/components/ui/separator"
+
+export const metadata: Metadata = {
+    title: "Systm.re",
+    description: "Systm.re — activité freelance en développement web et infrastructure à La Réunion.",
+}
 
 const catalog = [
     {

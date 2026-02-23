@@ -1,4 +1,10 @@
+import type { Metadata } from "next"
 import { Separator } from "@/components/ui/separator"
+
+export const metadata: Metadata = {
+    title: "Services",
+    description: "Développement d'applications web de A à Z et installation NAS Ugreen pour la souveraineté de vos données.",
+}
 
 const skills = [
     "Next.js / React",
