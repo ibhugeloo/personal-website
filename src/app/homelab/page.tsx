@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Plus, ExternalLink, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -41,7 +41,7 @@ const EMPTY_FORM: Omit<Service, "id"> = {
 
 export default function HomelabPage() {
     const { user } = useAuth()
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
 
     const [services, setServices] = useState<Service[]>([])
     const [isLoading, setIsLoading] = useState(true)
@@ -53,20 +53,19 @@ export default function HomelabPage() {
     const [formError, setFormError] = useState<string | null>(null)
 
     useEffect(() => {
+        let isMounted = true
         supabase
             .from("homelab_services")
             .select("*")
-            .order("created_at", { ascending: true })
+            .order("created_at", { ascending: false })
             .then(({ data, error }) => {
-                if (error) {
-                    setFetchError("Impossible de charger les services.")
-                } else {
-                    setServices((data ?? []) as Service[])
-                }
+                if (!isMounted) return
+                if (error) setFetchError("Impossible de charger les services.")
+                else setServices((data ?? []) as Service[])
                 setIsLoading(false)
             })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+        return () => { isMounted = false }
+    }, [supabase])
 
     function openAdd() {
         setEditingId(null)
@@ -86,10 +85,7 @@ export default function HomelabPage() {
     async function handleDelete(id: string) {
         if (!window.confirm("Supprimer ce service ?")) return
         const { error } = await supabase.from("homelab_services").delete().eq("id", id)
-        if (error) {
-            alert("Erreur lors de la suppression.")
-            return
-        }
+        if (error) { alert("Erreur lors de la suppression."); return }
         setServices((prev) => prev.filter((s) => s.id !== id))
     }
 
@@ -101,29 +97,14 @@ export default function HomelabPage() {
 
         if (editingId) {
             const { data, error } = await supabase
-                .from("homelab_services")
-                .update(form)
-                .eq("id", editingId)
-                .select()
-                .single()
-            if (error) {
-                setFormError("Erreur lors de la modification.")
-            } else {
-                setServices((prev) => prev.map((s) => (s.id === editingId ? (data as Service) : s)))
-                setShowModal(false)
-            }
+                .from("homelab_services").update(form).eq("id", editingId).select().single()
+            if (error) setFormError("Erreur lors de la modification.")
+            else { setServices((prev) => prev.map((s) => s.id === editingId ? data as Service : s)); setShowModal(false) }
         } else {
             const { data, error } = await supabase
-                .from("homelab_services")
-                .insert(form)
-                .select()
-                .single()
-            if (error) {
-                setFormError("Erreur lors de l'ajout.")
-            } else {
-                setServices((prev) => [...prev, data as Service])
-                setShowModal(false)
-            }
+                .from("homelab_services").insert(form).select().single()
+            if (error) setFormError("Erreur lors de l'ajout.")
+            else { setServices((prev) => [data as Service, ...prev]); setShowModal(false) }
         }
         setIsSaving(false)
     }
@@ -154,7 +135,7 @@ export default function HomelabPage() {
                 <div className="text-center py-16 text-destructive text-sm">{fetchError}</div>
             ) : services.length === 0 ? (
                 <div className="text-center py-16 text-muted-foreground">
-                    <p className="text-4xl mb-3">🔧</p>
+                    <p className="text-4xl mb-3" aria-hidden="true">🔧</p>
                     <p>Aucun service configuré</p>
                 </div>
             ) : (
@@ -176,7 +157,7 @@ export default function HomelabPage() {
                             )}
                             <CardHeader className="pb-2">
                                 <div className="flex items-center gap-2 pr-8">
-                                    <span className="text-2xl">{service.emoji}</span>
+                                    <span className="text-2xl" aria-hidden="true">{service.emoji}</span>
                                     <CardTitle className="text-base leading-tight">{service.name}</CardTitle>
                                 </div>
                             </CardHeader>
@@ -206,8 +187,9 @@ export default function HomelabPage() {
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="homelab-modal-title"
+                    onClick={() => setShowModal(false)}
                 >
-                    <div className="bg-background border rounded-xl shadow-xl w-full max-w-md p-6 space-y-5">
+                    <div className="bg-background border rounded-xl shadow-xl w-full max-w-md p-6 space-y-5" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-between">
                             <h2 id="homelab-modal-title" className="font-semibold text-lg">
                                 {editingId ? "Modifier le service" : "Ajouter un service"}
@@ -269,16 +251,12 @@ export default function HomelabPage() {
                                     onChange={(e) => setForm({ ...form, category: e.target.value as ServiceCategory })}
                                     className="w-full border rounded-lg px-3 py-1.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                                 >
-                                    {CATEGORIES.map((c) => (
-                                        <option key={c} value={c}>{c}</option>
-                                    ))}
+                                    {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                                 </select>
                             </div>
                             {formError && <p className="text-xs text-destructive">{formError}</p>}
                             <div className="flex gap-2 pt-2">
-                                <Button type="button" variant="outline" className="flex-1" onClick={() => setShowModal(false)}>
-                                    Annuler
-                                </Button>
+                                <Button type="button" variant="outline" className="flex-1" onClick={() => setShowModal(false)}>Annuler</Button>
                                 <Button type="submit" className="flex-1" disabled={isSaving}>
                                     {isSaving ? "Enregistrement…" : editingId ? "Enregistrer" : "Ajouter"}
                                 </Button>

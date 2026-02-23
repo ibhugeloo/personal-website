@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -52,7 +52,7 @@ function formatDate(iso: string) {
 
 export default function NotesPage() {
     const { user } = useAuth()
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
 
     const [notes, setNotes] = useState<Note[]>([])
     const [isLoading, setIsLoading] = useState(true)
@@ -65,20 +65,19 @@ export default function NotesPage() {
     const [filter, setFilter] = useState<NoteTag | "Tous">("Tous")
 
     useEffect(() => {
+        let isMounted = true
         supabase
             .from("notes")
             .select("*")
             .order("created_at", { ascending: false })
             .then(({ data, error }) => {
-                if (error) {
-                    setFetchError("Impossible de charger les notes.")
-                } else {
-                    setNotes((data ?? []) as Note[])
-                }
+                if (!isMounted) return
+                if (error) setFetchError("Impossible de charger les notes.")
+                else setNotes((data ?? []) as Note[])
                 setIsLoading(false)
             })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+        return () => { isMounted = false }
+    }, [supabase])
 
     function openAdd() {
         setEditingId(null)
@@ -98,10 +97,7 @@ export default function NotesPage() {
     async function handleDelete(id: string) {
         if (!window.confirm("Supprimer cette note ?")) return
         const { error } = await supabase.from("notes").delete().eq("id", id)
-        if (error) {
-            alert("Erreur lors de la suppression.")
-            return
-        }
+        if (error) { alert("Erreur lors de la suppression."); return }
         setNotes((prev) => prev.filter((n) => n.id !== id))
     }
 
@@ -113,29 +109,14 @@ export default function NotesPage() {
 
         if (editingId) {
             const { data, error } = await supabase
-                .from("notes")
-                .update(form)
-                .eq("id", editingId)
-                .select()
-                .single()
-            if (error) {
-                setFormError("Erreur lors de la modification.")
-            } else {
-                setNotes((prev) => prev.map((n) => (n.id === editingId ? (data as Note) : n)))
-                setShowModal(false)
-            }
+                .from("notes").update(form).eq("id", editingId).select().single()
+            if (error) setFormError("Erreur lors de la modification.")
+            else { setNotes((prev) => prev.map((n) => n.id === editingId ? data as Note : n)); setShowModal(false) }
         } else {
             const { data, error } = await supabase
-                .from("notes")
-                .insert(form)
-                .select()
-                .single()
-            if (error) {
-                setFormError("Erreur lors de l'ajout.")
-            } else {
-                setNotes((prev) => [data as Note, ...prev])
-                setShowModal(false)
-            }
+                .from("notes").insert(form).select().single()
+            if (error) setFormError("Erreur lors de l'ajout.")
+            else { setNotes((prev) => [data as Note, ...prev]); setShowModal(false) }
         }
         setIsSaving(false)
     }
@@ -204,9 +185,7 @@ export default function NotesPage() {
                                         </span>
                                         <span className="text-xs text-muted-foreground">{formatDate(note.created_at)}</span>
                                     </div>
-                                    {note.title && (
-                                        <p className="font-semibold leading-snug">{note.title}</p>
-                                    )}
+                                    {note.title && <p className="font-semibold leading-snug">{note.title}</p>}
                                     <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
                                         {note.content}
                                     </p>
@@ -224,8 +203,9 @@ export default function NotesPage() {
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="notes-modal-title"
+                    onClick={() => setShowModal(false)}
                 >
-                    <div className="bg-background border rounded-xl shadow-xl w-full max-w-lg p-6 space-y-5">
+                    <div className="bg-background border rounded-xl shadow-xl w-full max-w-lg p-6 space-y-5" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-between">
                             <h2 id="notes-modal-title" className="font-semibold text-lg">
                                 {editingId ? "Modifier la note" : "Nouvelle note"}
@@ -279,9 +259,7 @@ export default function NotesPage() {
                             </div>
                             {formError && <p className="text-xs text-destructive">{formError}</p>}
                             <div className="flex gap-2 pt-2">
-                                <Button type="button" variant="outline" className="flex-1" onClick={() => setShowModal(false)}>
-                                    Annuler
-                                </Button>
+                                <Button type="button" variant="outline" className="flex-1" onClick={() => setShowModal(false)}>Annuler</Button>
                                 <Button type="submit" className="flex-1" disabled={isSaving}>
                                     {isSaving ? "Enregistrement…" : editingId ? "Enregistrer" : "Publier"}
                                 </Button>

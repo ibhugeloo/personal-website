@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useEffect, useMemo, useState } from "react"
 import type { User } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/client"
 
@@ -18,18 +18,24 @@ const AuthContext = createContext<AuthContextType>({
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null)
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
 
     useEffect(() => {
-        supabase.auth.getUser().then(({ data }) => setUser(data.user))
+        let isMounted = true
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-            setUser(session?.user ?? null)
+        supabase.auth.getUser().then(({ data }) => {
+            if (isMounted) setUser(data.user)
         })
 
-        return () => subscription.unsubscribe()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+            if (isMounted) setUser(session?.user ?? null)
+        })
+
+        return () => {
+            isMounted = false
+            subscription.unsubscribe()
+        }
+    }, [supabase])
 
     async function signIn(email: string, password: string) {
         const { error } = await supabase.auth.signInWithPassword({ email, password })

@@ -90,13 +90,11 @@ export function Sidebar() {
     function handleDragEnd(event: DragEndEvent) {
         const { active, over } = event
         if (over && active.id !== over.id) {
-            setItems((prev) => {
-                const oldIndex = prev.findIndex((i) => i.href === active.id)
-                const newIndex = prev.findIndex((i) => i.href === over.id)
-                const next = arrayMove(prev, oldIndex, newIndex)
-                localStorage.setItem("nav-order", JSON.stringify(next.map((i) => i.href)))
-                return next
-            })
+            const oldIndex = items.findIndex((i) => i.href === active.id)
+            const newIndex = items.findIndex((i) => i.href === over.id)
+            const next = arrayMove(items, oldIndex, newIndex)
+            localStorage.setItem("nav-order", JSON.stringify(next.map((i) => i.href)))
+            setItems(next)
         }
     }
 

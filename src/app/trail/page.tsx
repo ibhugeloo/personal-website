@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Plus, Pencil, Trash2, X } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
@@ -26,9 +26,9 @@ type GearItem = {
 const GEAR_CATEGORIES: GearCategory[] = ["Chaussures", "Vêtements", "Accessoires", "Électronique", "Hydratation", "Autre"]
 
 const STATUS_COLORS: Record<GearStatus, string> = {
-    Actif:          "text-green-600 bg-green-500/10 border-green-500/20",
-    Backup:         "text-blue-500 bg-blue-500/10 border-blue-500/20",
-    "À remplacer":  "text-red-500 bg-red-500/10 border-red-500/20",
+    Actif:         "text-green-600 bg-green-500/10 border-green-500/20",
+    Backup:        "text-blue-500 bg-blue-500/10 border-blue-500/20",
+    "À remplacer": "text-red-500 bg-red-500/10 border-red-500/20",
 }
 
 const CATEGORY_EMOJIS: Record<GearCategory, string> = {
@@ -52,7 +52,7 @@ const EMPTY_FORM: Omit<GearItem, "id"> = {
 
 function GearInventory() {
     const { user } = useAuth()
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
 
     const [items, setItems] = useState<GearItem[]>([])
     const [isLoading, setIsLoading] = useState(true)
@@ -65,20 +65,19 @@ function GearInventory() {
     const [filter, setFilter] = useState<GearCategory | "Tous">("Tous")
 
     useEffect(() => {
+        let isMounted = true
         supabase
             .from("trail_gear")
             .select("*")
-            .order("created_at", { ascending: true })
+            .order("created_at", { ascending: false })
             .then(({ data, error }) => {
-                if (error) {
-                    setFetchError("Impossible de charger l'inventaire.")
-                } else {
-                    setItems((data ?? []) as GearItem[])
-                }
+                if (!isMounted) return
+                if (error) setFetchError("Impossible de charger l'inventaire.")
+                else setItems((data ?? []) as GearItem[])
                 setIsLoading(false)
             })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+        return () => { isMounted = false }
+    }, [supabase])
 
     function openAdd() {
         setEditingId(null)
@@ -98,10 +97,7 @@ function GearInventory() {
     async function handleDelete(id: string) {
         if (!window.confirm("Supprimer cet équipement ?")) return
         const { error } = await supabase.from("trail_gear").delete().eq("id", id)
-        if (error) {
-            alert("Erreur lors de la suppression.")
-            return
-        }
+        if (error) { alert("Erreur lors de la suppression."); return }
         setItems((prev) => prev.filter((i) => i.id !== id))
     }
 
@@ -113,29 +109,14 @@ function GearInventory() {
 
         if (editingId) {
             const { data, error } = await supabase
-                .from("trail_gear")
-                .update(form)
-                .eq("id", editingId)
-                .select()
-                .single()
-            if (error) {
-                setFormError("Erreur lors de la modification.")
-            } else {
-                setItems((prev) => prev.map((i) => (i.id === editingId ? (data as GearItem) : i)))
-                setShowModal(false)
-            }
+                .from("trail_gear").update(form).eq("id", editingId).select().single()
+            if (error) setFormError("Erreur lors de la modification.")
+            else { setItems((prev) => prev.map((i) => i.id === editingId ? data as GearItem : i)); setShowModal(false) }
         } else {
             const { data, error } = await supabase
-                .from("trail_gear")
-                .insert(form)
-                .select()
-                .single()
-            if (error) {
-                setFormError("Erreur lors de l'ajout.")
-            } else {
-                setItems((prev) => [...prev, data as GearItem])
-                setShowModal(false)
-            }
+                .from("trail_gear").insert(form).select().single()
+            if (error) setFormError("Erreur lors de l'ajout.")
+            else { setItems((prev) => [data as GearItem, ...prev]); setShowModal(false) }
         }
         setIsSaving(false)
     }
@@ -156,7 +137,9 @@ function GearInventory() {
                                     : "border-border text-muted-foreground hover:border-foreground/50"
                             }`}
                         >
-                            {cat !== "Tous" && CATEGORY_EMOJIS[cat as GearCategory] + " "}
+                            {cat !== "Tous" && (
+                                <span aria-hidden="true">{CATEGORY_EMOJIS[cat as GearCategory]} </span>
+                            )}
                             {cat}
                         </button>
                     ))}
@@ -179,7 +162,7 @@ function GearInventory() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {filtered.map((item) => (
                         <div key={item.id} className="group flex items-start gap-3 p-3 rounded-lg border bg-card hover:shadow-sm transition-shadow">
-                            <span className="text-2xl shrink-0 mt-0.5">{CATEGORY_EMOJIS[item.category]}</span>
+                            <span className="text-2xl shrink-0 mt-0.5" aria-hidden="true">{CATEGORY_EMOJIS[item.category]}</span>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-start justify-between gap-2">
                                     <div>
@@ -188,10 +171,10 @@ function GearInventory() {
                                     </div>
                                     {user && (
                                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEdit(item)}>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEdit(item)} aria-label="Modifier">
                                                 <Pencil className="h-3 w-3" />
                                             </Button>
-                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => handleDelete(item.id)}>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => handleDelete(item.id)} aria-label="Supprimer">
                                                 <Trash2 className="h-3 w-3" />
                                             </Button>
                                         </div>
@@ -217,8 +200,9 @@ function GearInventory() {
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="trail-modal-title"
+                    onClick={() => setShowModal(false)}
                 >
-                    <div className="bg-background border rounded-xl shadow-xl w-full max-w-md p-6 space-y-5">
+                    <div className="bg-background border rounded-xl shadow-xl w-full max-w-md p-6 space-y-5" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-between">
                             <h2 id="trail-modal-title" className="font-semibold text-lg">
                                 {editingId ? "Modifier" : "Ajouter un équipement"}
@@ -261,9 +245,7 @@ function GearInventory() {
                                         onChange={(e) => setForm({ ...form, category: e.target.value as GearCategory })}
                                         className="w-full border rounded-lg px-3 py-1.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                                     >
-                                        {GEAR_CATEGORIES.map((c) => (
-                                            <option key={c} value={c}>{c}</option>
-                                        ))}
+                                        {GEAR_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                 </div>
                                 <div className="space-y-1">
@@ -292,9 +274,7 @@ function GearInventory() {
                             </div>
                             {formError && <p className="text-xs text-destructive">{formError}</p>}
                             <div className="flex gap-2 pt-2">
-                                <Button type="button" variant="outline" className="flex-1" onClick={() => setShowModal(false)}>
-                                    Annuler
-                                </Button>
+                                <Button type="button" variant="outline" className="flex-1" onClick={() => setShowModal(false)}>Annuler</Button>
                                 <Button type="submit" className="flex-1" disabled={isSaving}>
                                     {isSaving ? "Enregistrement…" : editingId ? "Enregistrer" : "Ajouter"}
                                 </Button>
@@ -332,10 +312,10 @@ export default function TrailPage() {
                                 La discipline est la clé. Mon approche combine renforcement, volume et récupération
                             </p>
                             <ul className="space-y-1">
-                                <li>🏃 Renfo & Dénivelé</li>
-                                <li>⛰️ Fractionné en montée</li>
-                                <li>🥗 Manger propre</li>
-                                <li>🛌 Jour OFF respecté</li>
+                                <li><span aria-hidden="true">🏃</span> Renfo & Dénivelé</li>
+                                <li><span aria-hidden="true">⛰️</span> Fractionné en montée</li>
+                                <li><span aria-hidden="true">🥗</span> Manger propre</li>
+                                <li><span aria-hidden="true">🛌</span> Jour OFF respecté</li>
                             </ul>
                             <div className="p-4 bg-muted/50 rounded-lg border italic text-muted-foreground text-sm">
                                 &quot;Eat the frogs, être reconnaissant, accepter l&apos;évolution dans la douleur&quot;
@@ -347,17 +327,17 @@ export default function TrailPage() {
                         <h3 className="font-semibold">Nutrition & Hydratation</h3>
                         <div className="space-y-3">
                             <div className="space-y-1">
-                                <p className="font-medium">🧪 Potion Magique</p>
+                                <p className="font-medium"><span aria-hidden="true">🧪</span> Potion Magique</p>
                                 <p className="text-muted-foreground">Eau + Sel + Sucre + Citron</p>
                             </div>
                             <div className="space-y-1">
-                                <p className="font-medium">🥣 Potion Panoramix</p>
+                                <p className="font-medium"><span aria-hidden="true">🥣</span> Potion Panoramix</p>
                                 <p className="text-muted-foreground">
                                     2 Bananes + 100g Flocon d&apos;avoine + 2 C. Beurre de cacahuète + 1 C. Miel
                                 </p>
                             </div>
                             <div className="p-3 border rounded-lg space-y-2">
-                                <p className="font-medium text-orange-500 text-sm">⚠️ Règles quotidiennes</p>
+                                <p className="font-medium text-orange-500 text-sm"><span aria-hidden="true">⚠️</span> Règles quotidiennes</p>
                                 <ul className="space-y-1 text-muted-foreground list-disc list-inside">
                                     <li>3 repas + 2 collations</li>
                                     <li>2 L d'eau minimum</li>
