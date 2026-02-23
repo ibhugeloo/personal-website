@@ -23,12 +23,12 @@ const CATEGORIES: ServiceCategory[] = ["Virtualisation", "Containers", "Réseau"
 
 const CATEGORY_COLORS: Record<ServiceCategory, string> = {
     Virtualisation: "text-blue-500 bg-blue-500/10 border-blue-500/20",
-    Containers: "text-cyan-500 bg-cyan-500/10 border-cyan-500/20",
-    Réseau: "text-green-500 bg-green-500/10 border-green-500/20",
-    Sécurité: "text-red-500 bg-red-500/10 border-red-500/20",
-    Productivité: "text-purple-500 bg-purple-500/10 border-purple-500/20",
-    Monitoring: "text-orange-500 bg-orange-500/10 border-orange-500/20",
-    Autre: "text-muted-foreground bg-muted/50 border-border",
+    Containers:     "text-cyan-500 bg-cyan-500/10 border-cyan-500/20",
+    Réseau:         "text-green-500 bg-green-500/10 border-green-500/20",
+    Sécurité:       "text-red-500 bg-red-500/10 border-red-500/20",
+    Productivité:   "text-purple-500 bg-purple-500/10 border-purple-500/20",
+    Monitoring:     "text-orange-500 bg-orange-500/10 border-orange-500/20",
+    Autre:          "text-muted-foreground bg-muted/50 border-border",
 }
 
 const EMPTY_FORM: Omit<Service, "id"> = {
@@ -42,18 +42,28 @@ const EMPTY_FORM: Omit<Service, "id"> = {
 export default function HomelabPage() {
     const { user } = useAuth()
     const supabase = createClient()
+
     const [services, setServices] = useState<Service[]>([])
+    const [isLoading, setIsLoading] = useState(true)
+    const [fetchError, setFetchError] = useState<string | null>(null)
+    const [isSaving, setIsSaving] = useState(false)
     const [showModal, setShowModal] = useState(false)
     const [editingId, setEditingId] = useState<string | null>(null)
     const [form, setForm] = useState<Omit<Service, "id">>(EMPTY_FORM)
+    const [formError, setFormError] = useState<string | null>(null)
 
     useEffect(() => {
         supabase
             .from("homelab_services")
             .select("*")
             .order("created_at", { ascending: true })
-            .then(({ data }) => {
-                if (data) setServices(data as Service[])
+            .then(({ data, error }) => {
+                if (error) {
+                    setFetchError("Impossible de charger les services.")
+                } else {
+                    setServices((data ?? []) as Service[])
+                }
+                setIsLoading(false)
             })
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
@@ -61,6 +71,7 @@ export default function HomelabPage() {
     function openAdd() {
         setEditingId(null)
         setForm(EMPTY_FORM)
+        setFormError(null)
         setShowModal(true)
     }
 
@@ -68,39 +79,53 @@ export default function HomelabPage() {
         if (!user) return
         setEditingId(service.id)
         setForm({ name: service.name, url: service.url, description: service.description, category: service.category, emoji: service.emoji })
+        setFormError(null)
         setShowModal(true)
     }
 
     async function handleDelete(id: string) {
-        await supabase.from("homelab_services").delete().eq("id", id)
+        if (!window.confirm("Supprimer ce service ?")) return
+        const { error } = await supabase.from("homelab_services").delete().eq("id", id)
+        if (error) {
+            alert("Erreur lors de la suppression.")
+            return
+        }
         setServices((prev) => prev.filter((s) => s.id !== id))
     }
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         if (!form.name.trim()) return
+        setIsSaving(true)
+        setFormError(null)
 
         if (editingId) {
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from("homelab_services")
                 .update(form)
                 .eq("id", editingId)
                 .select()
                 .single()
-            if (data) {
+            if (error) {
+                setFormError("Erreur lors de la modification.")
+            } else {
                 setServices((prev) => prev.map((s) => (s.id === editingId ? (data as Service) : s)))
+                setShowModal(false)
             }
         } else {
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from("homelab_services")
                 .insert(form)
                 .select()
                 .single()
-            if (data) {
+            if (error) {
+                setFormError("Erreur lors de l'ajout.")
+            } else {
                 setServices((prev) => [...prev, data as Service])
+                setShowModal(false)
             }
         }
-        setShowModal(false)
+        setIsSaving(false)
     }
 
     return (
@@ -121,7 +146,13 @@ export default function HomelabPage() {
                 </Button>
             )}
 
-            {services.length === 0 ? (
+            {isLoading ? (
+                <div className="text-center py-16 text-muted-foreground">
+                    <p className="text-sm">Chargement…</p>
+                </div>
+            ) : fetchError ? (
+                <div className="text-center py-16 text-destructive text-sm">{fetchError}</div>
+            ) : services.length === 0 ? (
                 <div className="text-center py-16 text-muted-foreground">
                     <p className="text-4xl mb-3">🔧</p>
                     <p>Aucun service configuré</p>
@@ -156,7 +187,7 @@ export default function HomelabPage() {
                                         {service.category}
                                     </span>
                                     {service.url && service.url !== "#" && (
-                                        <a href={service.url} target="_blank" rel="noopener noreferrer">
+                                        <a href={service.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
                                             <Button variant="ghost" size="icon" className="h-7 w-7">
                                                 <ExternalLink className="h-3.5 w-3.5" />
                                             </Button>
@@ -169,12 +200,18 @@ export default function HomelabPage() {
                 </div>
             )}
 
-            {/* Modal — admin only */}
             {showModal && user && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="homelab-modal-title"
+                >
                     <div className="bg-background border rounded-xl shadow-xl w-full max-w-md p-6 space-y-5">
                         <div className="flex items-center justify-between">
-                            <h2 className="font-semibold text-lg">{editingId ? "Modifier le service" : "Ajouter un service"}</h2>
+                            <h2 id="homelab-modal-title" className="font-semibold text-lg">
+                                {editingId ? "Modifier le service" : "Ajouter un service"}
+                            </h2>
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowModal(false)}>
                                 <X className="h-4 w-4" />
                             </Button>
@@ -199,6 +236,7 @@ export default function HomelabPage() {
                                         onChange={(e) => setForm({ ...form, name: e.target.value })}
                                         placeholder="ex: Proxmox VE"
                                         required
+                                        maxLength={100}
                                         className="w-full border rounded-lg px-3 py-1.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                                     />
                                 </div>
@@ -206,7 +244,7 @@ export default function HomelabPage() {
                             <div className="space-y-1">
                                 <label className="text-xs text-muted-foreground">URL</label>
                                 <input
-                                    type="text"
+                                    type="url"
                                     value={form.url}
                                     onChange={(e) => setForm({ ...form, url: e.target.value })}
                                     placeholder="https://proxmox.local:8006"
@@ -220,6 +258,7 @@ export default function HomelabPage() {
                                     value={form.description}
                                     onChange={(e) => setForm({ ...form, description: e.target.value })}
                                     placeholder="Rôle du service"
+                                    maxLength={200}
                                     className="w-full border rounded-lg px-3 py-1.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                                 />
                             </div>
@@ -235,12 +274,13 @@ export default function HomelabPage() {
                                     ))}
                                 </select>
                             </div>
+                            {formError && <p className="text-xs text-destructive">{formError}</p>}
                             <div className="flex gap-2 pt-2">
                                 <Button type="button" variant="outline" className="flex-1" onClick={() => setShowModal(false)}>
                                     Annuler
                                 </Button>
-                                <Button type="submit" className="flex-1">
-                                    {editingId ? "Enregistrer" : "Ajouter"}
+                                <Button type="submit" className="flex-1" disabled={isSaving}>
+                                    {isSaving ? "Enregistrement…" : editingId ? "Enregistrer" : "Ajouter"}
                                 </Button>
                             </div>
                         </form>

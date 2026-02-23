@@ -26,18 +26,18 @@ type GearItem = {
 const GEAR_CATEGORIES: GearCategory[] = ["Chaussures", "Vêtements", "Accessoires", "Électronique", "Hydratation", "Autre"]
 
 const STATUS_COLORS: Record<GearStatus, string> = {
-    Actif: "text-green-600 bg-green-500/10 border-green-500/20",
-    Backup: "text-blue-500 bg-blue-500/10 border-blue-500/20",
-    "À remplacer": "text-red-500 bg-red-500/10 border-red-500/20",
+    Actif:          "text-green-600 bg-green-500/10 border-green-500/20",
+    Backup:         "text-blue-500 bg-blue-500/10 border-blue-500/20",
+    "À remplacer":  "text-red-500 bg-red-500/10 border-red-500/20",
 }
 
 const CATEGORY_EMOJIS: Record<GearCategory, string> = {
-    Chaussures: "👟",
-    Vêtements: "👕",
-    Accessoires: "🕶️",
+    Chaussures:   "👟",
+    Vêtements:    "👕",
+    Accessoires:  "🕶️",
     Électronique: "⌚",
-    Hydratation: "🧴",
-    Autre: "📦",
+    Hydratation:  "🧴",
+    Autre:        "📦",
 }
 
 const EMPTY_FORM: Omit<GearItem, "id"> = {
@@ -53,10 +53,15 @@ const EMPTY_FORM: Omit<GearItem, "id"> = {
 function GearInventory() {
     const { user } = useAuth()
     const supabase = createClient()
+
     const [items, setItems] = useState<GearItem[]>([])
+    const [isLoading, setIsLoading] = useState(true)
+    const [fetchError, setFetchError] = useState<string | null>(null)
+    const [isSaving, setIsSaving] = useState(false)
     const [showModal, setShowModal] = useState(false)
     const [editingId, setEditingId] = useState<string | null>(null)
     const [form, setForm] = useState<Omit<GearItem, "id">>(EMPTY_FORM)
+    const [formError, setFormError] = useState<string | null>(null)
     const [filter, setFilter] = useState<GearCategory | "Tous">("Tous")
 
     useEffect(() => {
@@ -64,8 +69,13 @@ function GearInventory() {
             .from("trail_gear")
             .select("*")
             .order("created_at", { ascending: true })
-            .then(({ data }) => {
-                if (data) setItems(data as GearItem[])
+            .then(({ data, error }) => {
+                if (error) {
+                    setFetchError("Impossible de charger l'inventaire.")
+                } else {
+                    setItems((data ?? []) as GearItem[])
+                }
+                setIsLoading(false)
             })
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
@@ -73,6 +83,7 @@ function GearInventory() {
     function openAdd() {
         setEditingId(null)
         setForm(EMPTY_FORM)
+        setFormError(null)
         setShowModal(true)
     }
 
@@ -80,39 +91,53 @@ function GearInventory() {
         if (!user) return
         setEditingId(item.id)
         setForm({ name: item.name, brand: item.brand, category: item.category, status: item.status, notes: item.notes })
+        setFormError(null)
         setShowModal(true)
     }
 
     async function handleDelete(id: string) {
-        await supabase.from("trail_gear").delete().eq("id", id)
+        if (!window.confirm("Supprimer cet équipement ?")) return
+        const { error } = await supabase.from("trail_gear").delete().eq("id", id)
+        if (error) {
+            alert("Erreur lors de la suppression.")
+            return
+        }
         setItems((prev) => prev.filter((i) => i.id !== id))
     }
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         if (!form.name.trim()) return
+        setIsSaving(true)
+        setFormError(null)
 
         if (editingId) {
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from("trail_gear")
                 .update(form)
                 .eq("id", editingId)
                 .select()
                 .single()
-            if (data) {
+            if (error) {
+                setFormError("Erreur lors de la modification.")
+            } else {
                 setItems((prev) => prev.map((i) => (i.id === editingId ? (data as GearItem) : i)))
+                setShowModal(false)
             }
         } else {
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from("trail_gear")
                 .insert(form)
                 .select()
                 .single()
-            if (data) {
+            if (error) {
+                setFormError("Erreur lors de l'ajout.")
+            } else {
                 setItems((prev) => [...prev, data as GearItem])
+                setShowModal(false)
             }
         }
-        setShowModal(false)
+        setIsSaving(false)
     }
 
     const filtered = filter === "Tous" ? items : items.filter((i) => i.category === filter)
@@ -144,7 +169,11 @@ function GearInventory() {
                 )}
             </div>
 
-            {filtered.length === 0 ? (
+            {isLoading ? (
+                <p className="text-center py-10 text-muted-foreground text-sm">Chargement…</p>
+            ) : fetchError ? (
+                <p className="text-center py-10 text-destructive text-sm">{fetchError}</p>
+            ) : filtered.length === 0 ? (
                 <p className="text-center py-10 text-muted-foreground text-sm">Aucun équipement dans cette catégorie</p>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -182,12 +211,18 @@ function GearInventory() {
                 </div>
             )}
 
-            {/* Modal — admin only */}
             {showModal && user && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="trail-modal-title"
+                >
                     <div className="bg-background border rounded-xl shadow-xl w-full max-w-md p-6 space-y-5">
                         <div className="flex items-center justify-between">
-                            <h2 className="font-semibold text-lg">{editingId ? "Modifier" : "Ajouter un équipement"}</h2>
+                            <h2 id="trail-modal-title" className="font-semibold text-lg">
+                                {editingId ? "Modifier" : "Ajouter un équipement"}
+                            </h2>
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowModal(false)}>
                                 <X className="h-4 w-4" />
                             </Button>
@@ -202,6 +237,7 @@ function GearInventory() {
                                         onChange={(e) => setForm({ ...form, name: e.target.value })}
                                         placeholder="ex: Cascadia 16"
                                         required
+                                        maxLength={100}
                                         className="w-full border rounded-lg px-3 py-1.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                                     />
                                 </div>
@@ -212,6 +248,7 @@ function GearInventory() {
                                         value={form.brand}
                                         onChange={(e) => setForm({ ...form, brand: e.target.value })}
                                         placeholder="ex: Brooks"
+                                        maxLength={100}
                                         className="w-full border rounded-lg px-3 py-1.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                                     />
                                 </div>
@@ -249,15 +286,17 @@ function GearInventory() {
                                     value={form.notes}
                                     onChange={(e) => setForm({ ...form, notes: e.target.value })}
                                     placeholder="Terrain d'utilisation, remarques..."
+                                    maxLength={200}
                                     className="w-full border rounded-lg px-3 py-1.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                                 />
                             </div>
+                            {formError && <p className="text-xs text-destructive">{formError}</p>}
                             <div className="flex gap-2 pt-2">
                                 <Button type="button" variant="outline" className="flex-1" onClick={() => setShowModal(false)}>
                                     Annuler
                                 </Button>
-                                <Button type="submit" className="flex-1">
-                                    {editingId ? "Enregistrer" : "Ajouter"}
+                                <Button type="submit" className="flex-1" disabled={isSaving}>
+                                    {isSaving ? "Enregistrement…" : editingId ? "Enregistrer" : "Ajouter"}
                                 </Button>
                             </div>
                         </form>
@@ -283,12 +322,9 @@ export default function TrailPage() {
 
             <Separator />
 
-            {/* Guide section */}
             <div className="space-y-4">
                 <h2 className="text-base font-semibold tracking-tight">Guide</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                    {/* Méthodologie */}
                     <div className="space-y-3">
                         <h3 className="font-semibold">Méthodologie</h3>
                         <div className="space-y-3">
@@ -307,7 +343,6 @@ export default function TrailPage() {
                         </div>
                     </div>
 
-                    {/* Nutrition */}
                     <div className="space-y-3">
                         <h3 className="font-semibold">Nutrition & Hydratation</h3>
                         <div className="space-y-3">
@@ -332,13 +367,11 @@ export default function TrailPage() {
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
 
             <Separator />
 
-            {/* Inventaire section */}
             <div className="space-y-4">
                 <div>
                     <h2 className="text-base font-semibold tracking-tight">Inventaire</h2>

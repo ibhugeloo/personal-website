@@ -6,18 +6,7 @@ import { Menu } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import { SocialLinks } from "@/components/social-links"
-
-const navItems = [
-    { name: "Home", href: "/" },
-    { name: "Notes", href: "/notes" },
-    { name: "Projets", href: "/projects" },
-    { name: "Investing", href: "/investing" },
-    { name: "Services", href: "/services" },
-    { name: "Systm.re", href: "/business" },
-    { name: "Goal.re", href: "/goal" },
-    { name: "Trail", href: "/trail" },
-    { name: "Homelab", href: "/homelab" },
-]
+import { NAV_ITEMS } from "@/lib/nav"
 
 export function MobileNav() {
     const [open, setOpen] = useState(false)
@@ -39,7 +28,7 @@ export function MobileNav() {
                         </Link>
                     </div>
                     <nav className="flex-1 space-y-4">
-                        {navItems.map((item) => (
+                        {NAV_ITEMS.map((item) => (
                             <Link
                                 key={item.href}
                                 href={item.href}

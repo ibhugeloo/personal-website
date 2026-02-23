@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { GripVertical } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { NAV_ITEMS, type NavItem } from "@/lib/nav"
 import {
     DndContext,
     closestCenter,
@@ -21,20 +22,6 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { useAuth } from "@/context/auth-context"
-
-const ALL_NAV_ITEMS = [
-    { name: "Home", href: "/" },
-    { name: "Notes", href: "/notes" },
-    { name: "Projets", href: "/projects" },
-    { name: "Investing", href: "/investing" },
-    { name: "Services", href: "/services" },
-    { name: "Systm.re", href: "/business" },
-    { name: "Goal.re", href: "/goal" },
-    { name: "Trail", href: "/trail" },
-    { name: "Homelab", href: "/homelab" },
-]
-
-type NavItem = typeof ALL_NAV_ITEMS[number]
 
 function SortableNavItem({ item, isActive }: { item: NavItem; isActive: boolean }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.href })
@@ -76,17 +63,25 @@ export function Sidebar() {
     const pathname = usePathname()
     const router = useRouter()
     const { user, signOut } = useAuth()
-    const [items, setItems] = useState<NavItem[]>(ALL_NAV_ITEMS)
+    const [items, setItems] = useState<NavItem[]>(NAV_ITEMS)
 
     useEffect(() => {
-        const stored = localStorage.getItem("nav-order")
-        if (stored) {
-            const order: string[] = JSON.parse(stored)
+        try {
+            const stored = localStorage.getItem("nav-order")
+            if (!stored) return
+            const parsed = JSON.parse(stored)
+            if (!Array.isArray(parsed) || !parsed.every((item) => typeof item === "string")) {
+                localStorage.removeItem("nav-order")
+                return
+            }
+            const order: string[] = parsed
             const sorted = order
-                .map((href) => ALL_NAV_ITEMS.find((i) => i.href === href))
-                .filter(Boolean) as NavItem[]
-            const missing = ALL_NAV_ITEMS.filter((i) => !order.includes(i.href))
+                .map((href) => NAV_ITEMS.find((i) => i.href === href))
+                .filter((item): item is NavItem => Boolean(item))
+            const missing = NAV_ITEMS.filter((i) => !order.includes(i.href))
             setItems([...sorted, ...missing])
+        } catch {
+            localStorage.removeItem("nav-order")
         }
     }, [])
 

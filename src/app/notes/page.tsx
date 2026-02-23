@@ -25,11 +25,11 @@ const TAGS: NoteTag[] = ["Réflexion", "Tech", "Trail", "Business", "Lecture", "
 
 const TAG_COLORS: Record<NoteTag, string> = {
     Réflexion: "text-purple-500 bg-purple-500/10 border-purple-500/20",
-    Tech:       "text-blue-500 bg-blue-500/10 border-blue-500/20",
-    Trail:      "text-green-600 bg-green-500/10 border-green-500/20",
-    Business:   "text-orange-500 bg-orange-500/10 border-orange-500/20",
-    Lecture:    "text-yellow-600 bg-yellow-500/10 border-yellow-500/20",
-    Divers:     "text-muted-foreground bg-muted/50 border-border",
+    Tech:      "text-blue-500 bg-blue-500/10 border-blue-500/20",
+    Trail:     "text-green-600 bg-green-500/10 border-green-500/20",
+    Business:  "text-orange-500 bg-orange-500/10 border-orange-500/20",
+    Lecture:   "text-yellow-600 bg-yellow-500/10 border-yellow-500/20",
+    Divers:    "text-muted-foreground bg-muted/50 border-border",
 }
 
 const EMPTY_FORM: Omit<Note, "id" | "created_at"> = {
@@ -53,10 +53,15 @@ function formatDate(iso: string) {
 export default function NotesPage() {
     const { user } = useAuth()
     const supabase = createClient()
+
     const [notes, setNotes] = useState<Note[]>([])
+    const [isLoading, setIsLoading] = useState(true)
+    const [fetchError, setFetchError] = useState<string | null>(null)
+    const [isSaving, setIsSaving] = useState(false)
     const [showModal, setShowModal] = useState(false)
     const [editingId, setEditingId] = useState<string | null>(null)
     const [form, setForm] = useState<Omit<Note, "id" | "created_at">>(EMPTY_FORM)
+    const [formError, setFormError] = useState<string | null>(null)
     const [filter, setFilter] = useState<NoteTag | "Tous">("Tous")
 
     useEffect(() => {
@@ -64,8 +69,13 @@ export default function NotesPage() {
             .from("notes")
             .select("*")
             .order("created_at", { ascending: false })
-            .then(({ data }) => {
-                if (data) setNotes(data as Note[])
+            .then(({ data, error }) => {
+                if (error) {
+                    setFetchError("Impossible de charger les notes.")
+                } else {
+                    setNotes((data ?? []) as Note[])
+                }
+                setIsLoading(false)
             })
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
@@ -73,6 +83,7 @@ export default function NotesPage() {
     function openAdd() {
         setEditingId(null)
         setForm(EMPTY_FORM)
+        setFormError(null)
         setShowModal(true)
     }
 
@@ -80,46 +91,59 @@ export default function NotesPage() {
         if (!user) return
         setEditingId(note.id)
         setForm({ title: note.title, content: note.content, tag: note.tag })
+        setFormError(null)
         setShowModal(true)
     }
 
     async function handleDelete(id: string) {
-        await supabase.from("notes").delete().eq("id", id)
+        if (!window.confirm("Supprimer cette note ?")) return
+        const { error } = await supabase.from("notes").delete().eq("id", id)
+        if (error) {
+            alert("Erreur lors de la suppression.")
+            return
+        }
         setNotes((prev) => prev.filter((n) => n.id !== id))
     }
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         if (!form.content.trim()) return
+        setIsSaving(true)
+        setFormError(null)
 
         if (editingId) {
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from("notes")
                 .update(form)
                 .eq("id", editingId)
                 .select()
                 .single()
-            if (data) {
+            if (error) {
+                setFormError("Erreur lors de la modification.")
+            } else {
                 setNotes((prev) => prev.map((n) => (n.id === editingId ? (data as Note) : n)))
+                setShowModal(false)
             }
         } else {
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from("notes")
                 .insert(form)
                 .select()
                 .single()
-            if (data) {
+            if (error) {
+                setFormError("Erreur lors de l'ajout.")
+            } else {
                 setNotes((prev) => [data as Note, ...prev])
+                setShowModal(false)
             }
         }
-        setShowModal(false)
+        setIsSaving(false)
     }
 
     const filtered = filter === "Tous" ? notes : notes.filter((n) => n.tag === filter)
 
     return (
         <div className="space-y-5 max-w-2xl text-base leading-relaxed text-foreground">
-            {/* Header */}
             <div className="space-y-2">
                 <h1 className="text-xl font-semibold tracking-tight">Notes</h1>
                 <p className="text-muted-foreground">Réflexions courtes, pensées en vrac</p>
@@ -134,7 +158,6 @@ export default function NotesPage() {
                 </Button>
             )}
 
-            {/* Filters */}
             <div className="flex flex-wrap gap-2">
                 {(["Tous", ...TAGS] as const).map((t) => (
                     <button
@@ -151,8 +174,11 @@ export default function NotesPage() {
                 ))}
             </div>
 
-            {/* Notes feed */}
-            {filtered.length === 0 ? (
+            {isLoading ? (
+                <p className="text-center py-16 text-muted-foreground text-sm">Chargement…</p>
+            ) : fetchError ? (
+                <p className="text-center py-16 text-destructive text-sm">{fetchError}</p>
+            ) : filtered.length === 0 ? (
                 <p className="text-center py-16 text-muted-foreground text-sm">Aucune note dans cette catégorie</p>
             ) : (
                 <div className="space-y-px">
@@ -162,7 +188,6 @@ export default function NotesPage() {
                                 className={`group relative py-5 -mx-3 px-3 rounded-lg transition-colors ${user ? "cursor-pointer hover:bg-muted/30" : ""}`}
                                 onClick={() => user && openEdit(note)}
                             >
-                                {/* Delete button — admin only */}
                                 {user && (
                                     <button
                                         className="absolute top-4 right-3 h-6 w-6 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive hover:bg-destructive/10"
@@ -172,22 +197,16 @@ export default function NotesPage() {
                                         <X className="h-3.5 w-3.5" />
                                     </button>
                                 )}
-
                                 <div className={`space-y-2 ${user ? "pr-8" : ""}`}>
-                                    {/* Meta */}
                                     <div className="flex items-center gap-2 flex-wrap">
                                         <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${TAG_COLORS[note.tag]}`}>
                                             {note.tag}
                                         </span>
                                         <span className="text-xs text-muted-foreground">{formatDate(note.created_at)}</span>
                                     </div>
-
-                                    {/* Title */}
                                     {note.title && (
                                         <p className="font-semibold leading-snug">{note.title}</p>
                                     )}
-
-                                    {/* Content */}
                                     <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
                                         {note.content}
                                     </p>
@@ -199,12 +218,18 @@ export default function NotesPage() {
                 </div>
             )}
 
-            {/* Modal — admin only */}
             {showModal && user && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="notes-modal-title"
+                >
                     <div className="bg-background border rounded-xl shadow-xl w-full max-w-lg p-6 space-y-5">
                         <div className="flex items-center justify-between">
-                            <h2 className="font-semibold text-lg">{editingId ? "Modifier la note" : "Nouvelle note"}</h2>
+                            <h2 id="notes-modal-title" className="font-semibold text-lg">
+                                {editingId ? "Modifier la note" : "Nouvelle note"}
+                            </h2>
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowModal(false)}>
                                 <X className="h-4 w-4" />
                             </Button>
@@ -217,6 +242,7 @@ export default function NotesPage() {
                                     value={form.title}
                                     onChange={(e) => setForm({ ...form, title: e.target.value })}
                                     placeholder="Titre de la note"
+                                    maxLength={150}
                                     className="w-full border rounded-lg px-3 py-1.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                                 />
                             </div>
@@ -228,6 +254,7 @@ export default function NotesPage() {
                                     placeholder="Qu'est-ce qui te passe par la tête ?"
                                     required
                                     rows={5}
+                                    maxLength={5000}
                                     className="w-full border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring resize-none leading-relaxed"
                                 />
                             </div>
@@ -250,12 +277,13 @@ export default function NotesPage() {
                                     ))}
                                 </div>
                             </div>
+                            {formError && <p className="text-xs text-destructive">{formError}</p>}
                             <div className="flex gap-2 pt-2">
                                 <Button type="button" variant="outline" className="flex-1" onClick={() => setShowModal(false)}>
                                     Annuler
                                 </Button>
-                                <Button type="submit" className="flex-1">
-                                    {editingId ? "Enregistrer" : "Publier"}
+                                <Button type="submit" className="flex-1" disabled={isSaving}>
+                                    {isSaving ? "Enregistrement…" : editingId ? "Enregistrer" : "Publier"}
                                 </Button>
                             </div>
                         </form>

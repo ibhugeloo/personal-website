@@ -16,7 +16,7 @@ type Project = {
     name: string
     description: string
     status: ProjectStatus
-    tech: string       // comma-separated, e.g. "Next.js, Supabase, Tailwind"
+    tech: string
     url: string
     emoji: string
     created_at: string
@@ -27,17 +27,17 @@ type Project = {
 const STATUSES: ProjectStatus[] = ["En cours", "Terminé", "En pause", "Idée"]
 
 const STATUS_STYLES: Record<ProjectStatus, string> = {
-    "En cours":  "text-green-600 bg-green-500/10 border-green-500/25",
-    "Terminé":   "text-blue-500 bg-blue-500/10 border-blue-500/25",
-    "En pause":  "text-yellow-600 bg-yellow-500/10 border-yellow-500/25",
-    "Idée":      "text-muted-foreground bg-muted/60 border-border",
+    "En cours": "text-green-600 bg-green-500/10 border-green-500/25",
+    "Terminé":  "text-blue-500 bg-blue-500/10 border-blue-500/25",
+    "En pause": "text-yellow-600 bg-yellow-500/10 border-yellow-500/25",
+    "Idée":     "text-muted-foreground bg-muted/60 border-border",
 }
 
 const STATUS_DOT: Record<ProjectStatus, string> = {
-    "En cours":  "bg-green-500",
-    "Terminé":   "bg-blue-500",
-    "En pause":  "bg-yellow-500",
-    "Idée":      "bg-muted-foreground",
+    "En cours": "bg-green-500",
+    "Terminé":  "bg-blue-500",
+    "En pause": "bg-yellow-500",
+    "Idée":     "bg-muted-foreground",
 }
 
 const EMPTY_FORM: Omit<Project, "id" | "created_at"> = {
@@ -72,7 +72,6 @@ function ProjectCard({
 
     return (
         <div className="group relative flex flex-col rounded-xl border bg-card p-5 gap-4 hover:shadow-md transition-shadow">
-            {/* Admin actions */}
             {isAdmin && (
                 <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
@@ -92,7 +91,6 @@ function ProjectCard({
                 </div>
             )}
 
-            {/* Header */}
             <div className="flex items-start gap-3 pr-14">
                 <span className="text-3xl leading-none shrink-0 mt-0.5">{project.emoji}</span>
                 <div className="space-y-1 min-w-0">
@@ -104,22 +102,17 @@ function ProjectCard({
                 </div>
             </div>
 
-            {/* Description */}
             {project.description && (
                 <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
                     {project.description}
                 </p>
             )}
 
-            {/* Footer */}
             <div className="flex items-end justify-between gap-2 mt-auto">
                 {tags.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
                         {tags.map((tag) => (
-                            <span
-                                key={tag}
-                                className="text-xs px-2 py-0.5 rounded-md bg-muted text-muted-foreground font-mono"
-                            >
+                            <span key={tag} className="text-xs px-2 py-0.5 rounded-md bg-muted text-muted-foreground font-mono">
                                 {tag}
                             </span>
                         ))}
@@ -127,14 +120,8 @@ function ProjectCard({
                 ) : (
                     <div />
                 )}
-
                 {project.url && (
-                    <a
-                        href={project.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                    >
+                    <a href={project.url} target="_blank" rel="noopener noreferrer">
                         <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
                             <ExternalLink className="h-3.5 w-3.5" />
                         </Button>
@@ -152,18 +139,27 @@ export default function ProjectsPage() {
     const supabase = createClient()
 
     const [projects, setProjects] = useState<Project[]>([])
+    const [isLoading, setIsLoading] = useState(true)
+    const [fetchError, setFetchError] = useState<string | null>(null)
+    const [isSaving, setIsSaving] = useState(false)
     const [filterStatus, setFilterStatus] = useState<ProjectStatus | "Tous">("Tous")
     const [showModal, setShowModal] = useState(false)
     const [editingId, setEditingId] = useState<string | null>(null)
     const [form, setForm] = useState<Omit<Project, "id" | "created_at">>(EMPTY_FORM)
+    const [formError, setFormError] = useState<string | null>(null)
 
     useEffect(() => {
         supabase
             .from("projects")
             .select("*")
             .order("created_at", { ascending: false })
-            .then(({ data }) => {
-                if (data) setProjects(data as Project[])
+            .then(({ data, error }) => {
+                if (error) {
+                    setFetchError("Impossible de charger les projets.")
+                } else {
+                    setProjects((data ?? []) as Project[])
+                }
+                setIsLoading(false)
             })
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
@@ -171,6 +167,7 @@ export default function ProjectsPage() {
     function openAdd() {
         setEditingId(null)
         setForm(EMPTY_FORM)
+        setFormError(null)
         setShowModal(true)
     }
 
@@ -184,42 +181,59 @@ export default function ProjectsPage() {
             url: project.url,
             emoji: project.emoji,
         })
+        setFormError(null)
         setShowModal(true)
     }
 
     async function handleDelete(id: string) {
-        await supabase.from("projects").delete().eq("id", id)
+        if (!window.confirm("Supprimer ce projet ?")) return
+        const { error } = await supabase.from("projects").delete().eq("id", id)
+        if (error) {
+            alert("Erreur lors de la suppression.")
+            return
+        }
         setProjects((prev) => prev.filter((p) => p.id !== id))
     }
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         if (!form.name.trim()) return
+        setIsSaving(true)
+        setFormError(null)
 
         if (editingId) {
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from("projects")
                 .update(form)
                 .eq("id", editingId)
                 .select()
                 .single()
-            if (data) setProjects((prev) => prev.map((p) => (p.id === editingId ? (data as Project) : p)))
+            if (error) {
+                setFormError("Erreur lors de la modification.")
+            } else {
+                setProjects((prev) => prev.map((p) => (p.id === editingId ? (data as Project) : p)))
+                setShowModal(false)
+            }
         } else {
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from("projects")
                 .insert(form)
                 .select()
                 .single()
-            if (data) setProjects((prev) => [data as Project, ...prev])
+            if (error) {
+                setFormError("Erreur lors de l'ajout.")
+            } else {
+                setProjects((prev) => [data as Project, ...prev])
+                setShowModal(false)
+            }
         }
-        setShowModal(false)
+        setIsSaving(false)
     }
 
     const filtered = filterStatus === "Tous"
         ? projects
         : projects.filter((p) => p.status === filterStatus)
 
-    // Status counts for filter badges
     const counts = projects.reduce((acc, p) => {
         acc[p.status] = (acc[p.status] ?? 0) + 1
         return acc
@@ -227,7 +241,6 @@ export default function ProjectsPage() {
 
     return (
         <div className="space-y-5 max-w-4xl text-base leading-relaxed text-foreground">
-            {/* Header */}
             <div className="space-y-2">
                 <h1 className="text-xl font-semibold tracking-tight">Projets</h1>
                 <p className="text-muted-foreground">
@@ -237,7 +250,6 @@ export default function ProjectsPage() {
 
             <Separator />
 
-            {/* Toolbar */}
             <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div className="flex flex-wrap gap-2">
                     {(["Tous", ...STATUSES] as const).map((s) => (
@@ -260,7 +272,6 @@ export default function ProjectsPage() {
                         </button>
                     ))}
                 </div>
-
                 {user && (
                     <Button onClick={openAdd} size="sm" className="gap-2 shrink-0">
                         <Plus className="h-4 w-4" />
@@ -269,8 +280,13 @@ export default function ProjectsPage() {
                 )}
             </div>
 
-            {/* Grid */}
-            {filtered.length === 0 ? (
+            {isLoading ? (
+                <div className="text-center py-16 text-muted-foreground">
+                    <p className="text-sm">Chargement…</p>
+                </div>
+            ) : fetchError ? (
+                <div className="text-center py-16 text-destructive text-sm">{fetchError}</div>
+            ) : filtered.length === 0 ? (
                 <div className="text-center py-16 text-muted-foreground">
                     <p className="text-4xl mb-3">🛠️</p>
                     <p>Aucun projet{filterStatus !== "Tous" ? ` avec le statut « ${filterStatus} »` : ""}</p>
@@ -289,21 +305,23 @@ export default function ProjectsPage() {
                 </div>
             )}
 
-            {/* Modal — admin only */}
             {showModal && user && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="projects-modal-title"
+                >
                     <div className="bg-background border rounded-xl shadow-xl w-full max-w-lg p-6 space-y-5">
                         <div className="flex items-center justify-between">
-                            <h2 className="font-semibold text-lg">
+                            <h2 id="projects-modal-title" className="font-semibold text-lg">
                                 {editingId ? "Modifier le projet" : "Nouveau projet"}
                             </h2>
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowModal(false)}>
                                 <X className="h-4 w-4" />
                             </Button>
                         </div>
-
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            {/* Emoji + Nom */}
                             <div className="grid grid-cols-[auto_1fr] gap-3 items-end">
                                 <div className="space-y-1">
                                     <label className="text-xs text-muted-foreground">Icône</label>
@@ -323,12 +341,11 @@ export default function ProjectsPage() {
                                         onChange={(e) => setForm({ ...form, name: e.target.value })}
                                         placeholder="ex: Personal Website"
                                         required
+                                        maxLength={100}
                                         className="w-full border rounded-lg px-3 py-1.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                                     />
                                 </div>
                             </div>
-
-                            {/* Description */}
                             <div className="space-y-1">
                                 <label className="text-xs text-muted-foreground">Description</label>
                                 <textarea
@@ -336,11 +353,10 @@ export default function ProjectsPage() {
                                     onChange={(e) => setForm({ ...form, description: e.target.value })}
                                     placeholder="À quoi ça sert ?"
                                     rows={3}
+                                    maxLength={500}
                                     className="w-full border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring resize-none leading-relaxed"
                                 />
                             </div>
-
-                            {/* Status */}
                             <div className="space-y-1">
                                 <label className="text-xs text-muted-foreground">Statut</label>
                                 <div className="flex flex-wrap gap-2">
@@ -361,8 +377,6 @@ export default function ProjectsPage() {
                                     ))}
                                 </div>
                             </div>
-
-                            {/* Tech */}
                             <div className="space-y-1">
                                 <label className="text-xs text-muted-foreground">Stack <span className="opacity-50">(séparées par des virgules)</span></label>
                                 <input
@@ -370,6 +384,7 @@ export default function ProjectsPage() {
                                     value={form.tech}
                                     onChange={(e) => setForm({ ...form, tech: e.target.value })}
                                     placeholder="Next.js, Supabase, Tailwind"
+                                    maxLength={200}
                                     className="w-full border rounded-lg px-3 py-1.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                                 />
                                 {form.tech && (
@@ -382,25 +397,23 @@ export default function ProjectsPage() {
                                     </div>
                                 )}
                             </div>
-
-                            {/* URL */}
                             <div className="space-y-1">
                                 <label className="text-xs text-muted-foreground">Lien <span className="opacity-50">(optionnel)</span></label>
                                 <input
-                                    type="text"
+                                    type="url"
                                     value={form.url}
                                     onChange={(e) => setForm({ ...form, url: e.target.value })}
                                     placeholder="https://..."
                                     className="w-full border rounded-lg px-3 py-1.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                                 />
                             </div>
-
+                            {formError && <p className="text-xs text-destructive">{formError}</p>}
                             <div className="flex gap-2 pt-2">
                                 <Button type="button" variant="outline" className="flex-1" onClick={() => setShowModal(false)}>
                                     Annuler
                                 </Button>
-                                <Button type="submit" className="flex-1">
-                                    {editingId ? "Enregistrer" : "Ajouter"}
+                                <Button type="submit" className="flex-1" disabled={isSaving}>
+                                    {isSaving ? "Enregistrement…" : editingId ? "Enregistrer" : "Ajouter"}
                                 </Button>
                             </div>
                         </form>
