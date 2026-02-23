@@ -25,7 +25,7 @@ const TAGS: NoteTag[] = ["Réflexion", "Tech", "Trail", "Business", "Lecture", "
 
 const TAG_COLORS: Record<NoteTag, string> = {
     Réflexion: "text-purple-500 bg-purple-500/10 border-purple-500/20",
-    Tech:      "text-blue-500 bg-blue-500/10 border-blue-500/20",
+    Tech:      "text-blue-600 bg-blue-500/10 border-blue-500/20",
     Trail:     "text-green-600 bg-green-500/10 border-green-500/20",
     Business:  "text-orange-500 bg-orange-500/10 border-orange-500/20",
     Lecture:   "text-yellow-600 bg-yellow-500/10 border-yellow-500/20",

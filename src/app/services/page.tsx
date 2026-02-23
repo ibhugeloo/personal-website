@@ -118,7 +118,7 @@ export default function ServicesPage() {
                 </p>
                 <a
                     href="mailto:bhugeloo.idriss@gmail.com"
-                    className="inline-block mt-1 font-medium text-blue-500 hover:text-blue-600 transition-colors"
+                    className="inline-block mt-1 font-medium text-blue-600 hover:text-blue-700 transition-colors"
                 >
                     bhugeloo.idriss@gmail.com →
                 </a>

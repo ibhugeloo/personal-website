@@ -28,7 +28,7 @@ const STATUSES: ProjectStatus[] = ["En cours", "Terminé", "En pause", "Idée"]
 
 const STATUS_STYLES: Record<ProjectStatus, string> = {
     "En cours": "text-green-600 bg-green-500/10 border-green-500/25",
-    "Terminé":  "text-blue-500 bg-blue-500/10 border-blue-500/25",
+    "Terminé":  "text-blue-600 bg-blue-500/10 border-blue-500/25",
     "En pause": "text-yellow-600 bg-yellow-500/10 border-yellow-500/25",
     "Idée":     "text-muted-foreground bg-muted/60 border-border",
 }

@@ -27,7 +27,7 @@ const GEAR_CATEGORIES: GearCategory[] = ["Chaussures", "Vêtements", "Accessoire
 
 const STATUS_COLORS: Record<GearStatus, string> = {
     Actif:         "text-green-600 bg-green-500/10 border-green-500/20",
-    Backup:        "text-blue-500 bg-blue-500/10 border-blue-500/20",
+    Backup:        "text-blue-600 bg-blue-500/10 border-blue-500/20",
     "À remplacer": "text-red-500 bg-red-500/10 border-red-500/20",
 }
 

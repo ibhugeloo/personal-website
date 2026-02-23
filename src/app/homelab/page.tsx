@@ -22,7 +22,7 @@ type Service = {
 const CATEGORIES: ServiceCategory[] = ["Virtualisation", "Containers", "Réseau", "Sécurité", "Productivité", "Monitoring", "Autre"]
 
 const CATEGORY_COLORS: Record<ServiceCategory, string> = {
-    Virtualisation: "text-blue-500 bg-blue-500/10 border-blue-500/20",
+    Virtualisation: "text-blue-600 bg-blue-500/10 border-blue-500/20",
     Containers:     "text-cyan-500 bg-cyan-500/10 border-cyan-500/20",
     Réseau:         "text-green-500 bg-green-500/10 border-green-500/20",
     Sécurité:       "text-red-500 bg-red-500/10 border-red-500/20",

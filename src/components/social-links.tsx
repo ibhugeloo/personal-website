@@ -14,7 +14,7 @@ export function SocialLinks() {
                 <Link
                     key={link.name}
                     href={link.href}
-                    className="text-blue-500 hover:text-blue-600 transition-colors"
+                    className="text-blue-600 hover:text-blue-700 transition-colors"
                     target={link.name !== "Email" ? "_blank" : undefined}
                     rel={link.name !== "Email" ? "noopener noreferrer" : undefined}
                 >
