@@ -7,7 +7,7 @@ const skills = [
     "Docker / CI-CD",
     "Linux / Réseaux",
     "Proxmox / Virtualisation",
-    "NAS (Synology, TrueNAS)",
+    "NAS Ugreen",
     "Sécurité & VPN",
 ]
 
@@ -69,7 +69,7 @@ export default function ServicesPage() {
                         <ul className="space-y-1.5 pt-1">
                             {[
                                 "Choix du matériel adapté à ton usage et ton budget",
-                                "Installation et configuration (Synology, TrueNAS, Unraid…)",
+                                "Installation et configuration Ugreen NAS",
                                 "Accès à distance sécurisé (VPN, domaine custom)",
                                 "Sauvegardes automatiques et plan de reprise",
                                 "Formation pour une utilisation autonome",
