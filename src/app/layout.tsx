@@ -7,6 +7,7 @@ import { SocialLinks } from "@/components/social-links";
 import { Separator } from "@/components/ui/separator";
 import { PageTransition } from "@/components/page-transition";
 import { AuthProvider } from "@/context/auth-context";
+import { PostHogProvider } from "@/components/posthog-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -46,6 +47,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
+        <PostHogProvider>
         <AuthProvider>
         <div className="flex min-h-screen flex-col md:flex-row max-w-7xl mx-auto">
           {/* Mobile Header */}
@@ -69,6 +71,7 @@ export default function RootLayout({
           </main>
         </div>
         </AuthProvider>
+        </PostHogProvider>
       </body>
     </html>
   );
