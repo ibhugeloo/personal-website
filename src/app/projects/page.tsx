@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/context/auth-context"
+import { useToast } from "@/components/toast"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -136,6 +137,7 @@ function ProjectCard({
 
 export default function ProjectsPage() {
     const { user } = useAuth()
+    const { toast } = useToast()
     const supabase = useMemo(() => createClient(), [])
 
     const [projects, setProjects] = useState<Project[]>([])
@@ -180,8 +182,9 @@ export default function ProjectsPage() {
     async function handleDelete(id: string) {
         if (!window.confirm("Supprimer ce projet ?")) return
         const { error } = await supabase.from("projects").delete().eq("id", id)
-        if (error) { alert("Erreur lors de la suppression."); return }
+        if (error) { toast("Erreur lors de la suppression.", "error"); return }
         setProjects((prev) => prev.filter((p) => p.id !== id))
+        toast("Projet supprimé", "success")
     }
 
     async function handleSubmit(e: React.FormEvent) {
@@ -194,12 +197,12 @@ export default function ProjectsPage() {
             const { data, error } = await supabase
                 .from("projects").update(form).eq("id", editingId).select().single()
             if (error) setFormError("Erreur lors de la modification.")
-            else { setProjects((prev) => prev.map((p) => p.id === editingId ? data as Project : p)); setShowModal(false) }
+            else { setProjects((prev) => prev.map((p) => p.id === editingId ? data as Project : p)); setShowModal(false); toast("Projet modifié", "success") }
         } else {
             const { data, error } = await supabase
                 .from("projects").insert(form).select().single()
             if (error) setFormError("Erreur lors de l'ajout.")
-            else { setProjects((prev) => [data as Project, ...prev]); setShowModal(false) }
+            else { setProjects((prev) => [data as Project, ...prev]); setShowModal(false); toast("Projet ajouté", "success") }
         }
         setIsSaving(false)
     }

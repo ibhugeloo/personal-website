@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/context/auth-context"
+import { useToast } from "@/components/toast"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -52,6 +53,7 @@ function formatDate(iso: string) {
 
 export default function NotesPage() {
     const { user } = useAuth()
+    const { toast } = useToast()
     const supabase = useMemo(() => createClient(), [])
 
     const [notes, setNotes] = useState<Note[]>([])
@@ -97,8 +99,9 @@ export default function NotesPage() {
     async function handleDelete(id: string) {
         if (!window.confirm("Supprimer cette note ?")) return
         const { error } = await supabase.from("notes").delete().eq("id", id)
-        if (error) { alert("Erreur lors de la suppression."); return }
+        if (error) { toast("Erreur lors de la suppression.", "error"); return }
         setNotes((prev) => prev.filter((n) => n.id !== id))
+        toast("Note supprimée", "success")
     }
 
     async function handleSubmit(e: React.FormEvent) {
@@ -111,12 +114,12 @@ export default function NotesPage() {
             const { data, error } = await supabase
                 .from("notes").update(form).eq("id", editingId).select().single()
             if (error) setFormError("Erreur lors de la modification.")
-            else { setNotes((prev) => prev.map((n) => n.id === editingId ? data as Note : n)); setShowModal(false) }
+            else { setNotes((prev) => prev.map((n) => n.id === editingId ? data as Note : n)); setShowModal(false); toast("Note modifiée", "success") }
         } else {
             const { data, error } = await supabase
                 .from("notes").insert(form).select().single()
             if (error) setFormError("Erreur lors de l'ajout.")
-            else { setNotes((prev) => [data as Note, ...prev]); setShowModal(false) }
+            else { setNotes((prev) => [data as Note, ...prev]); setShowModal(false); toast("Note publiée", "success") }
         }
         setIsSaving(false)
     }
@@ -160,7 +163,7 @@ export default function NotesPage() {
             ) : fetchError ? (
                 <p className="text-center py-16 text-destructive text-sm">{fetchError}</p>
             ) : filtered.length === 0 ? (
-                <p className="text-center py-16 text-muted-foreground text-sm">Aucune note dans cette catégorie</p>
+                <p className="text-center py-16 text-muted-foreground text-sm">Aucune note{filter !== "Tous" ? ` dans la catégorie « ${filter} »` : ""}</p>
             ) : (
                 <div className="space-y-px">
                     {filtered.map((note, i) => (

@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/context/auth-context"
+import { useToast } from "@/components/toast"
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -52,6 +53,7 @@ const EMPTY_FORM: Omit<GearItem, "id"> = {
 
 function GearInventory() {
     const { user } = useAuth()
+    const { toast } = useToast()
     const supabase = useMemo(() => createClient(), [])
 
     const [items, setItems] = useState<GearItem[]>([])
@@ -97,8 +99,9 @@ function GearInventory() {
     async function handleDelete(id: string) {
         if (!window.confirm("Supprimer cet équipement ?")) return
         const { error } = await supabase.from("trail_gear").delete().eq("id", id)
-        if (error) { alert("Erreur lors de la suppression."); return }
+        if (error) { toast("Erreur lors de la suppression.", "error"); return }
         setItems((prev) => prev.filter((i) => i.id !== id))
+        toast("Équipement supprimé", "success")
     }
 
     async function handleSubmit(e: React.FormEvent) {
@@ -111,12 +114,12 @@ function GearInventory() {
             const { data, error } = await supabase
                 .from("trail_gear").update(form).eq("id", editingId).select().single()
             if (error) setFormError("Erreur lors de la modification.")
-            else { setItems((prev) => prev.map((i) => i.id === editingId ? data as GearItem : i)); setShowModal(false) }
+            else { setItems((prev) => prev.map((i) => i.id === editingId ? data as GearItem : i)); setShowModal(false); toast("Équipement modifié", "success") }
         } else {
             const { data, error } = await supabase
                 .from("trail_gear").insert(form).select().single()
             if (error) setFormError("Erreur lors de l'ajout.")
-            else { setItems((prev) => [data as GearItem, ...prev]); setShowModal(false) }
+            else { setItems((prev) => [data as GearItem, ...prev]); setShowModal(false); toast("Équipement ajouté", "success") }
         }
         setIsSaving(false)
     }
@@ -157,7 +160,7 @@ function GearInventory() {
             ) : fetchError ? (
                 <p className="text-center py-10 text-destructive text-sm">{fetchError}</p>
             ) : filtered.length === 0 ? (
-                <p className="text-center py-10 text-muted-foreground text-sm">Aucun équipement dans cette catégorie</p>
+                <p className="text-center py-10 text-muted-foreground text-sm">Aucun équipement{filter !== "Tous" ? ` dans la catégorie « ${filter} »` : ""}</p>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {filtered.map((item) => (

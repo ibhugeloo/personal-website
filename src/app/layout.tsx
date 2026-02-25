@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { PageTransition } from "@/components/page-transition";
 import { AuthProvider } from "@/context/auth-context";
 import { PostHogProvider } from "@/components/posthog-provider";
+import { ToastProvider } from "@/components/toast";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -49,6 +50,7 @@ export default function RootLayout({
       >
         <PostHogProvider>
         <AuthProvider>
+        <ToastProvider>
         <div className="flex min-h-screen flex-col md:flex-row max-w-7xl mx-auto">
           {/* Mobile Header */}
           <div className="md:hidden flex items-center justify-between p-4 border-b bg-background sticky top-0 z-50">
@@ -70,6 +72,7 @@ export default function RootLayout({
             </div>
           </main>
         </div>
+        </ToastProvider>
         </AuthProvider>
         </PostHogProvider>
       </body>

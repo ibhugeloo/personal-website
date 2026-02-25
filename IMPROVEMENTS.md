@@ -7,13 +7,10 @@ Fichier de suivi des améliorations. Mis à jour après chaque implémentation.
 ## Fait
 
 - [x] **PostHog Analytics** — Tracking des visites et pageviews avec PostHog (provider App Router)
-
-## Gains rapides
-
-- [ ] **Remplacer les `alert()` par des toasts** — Les 4 pages CRUD utilisent `alert()` pour les erreurs de suppression. Utiliser un composant toast shadcn/ui.
-- [ ] **Feedback de succès après sauvegarde** — Toast "Enregistré" de 2s après chaque save (actuellement le modal se ferme silencieusement).
-- [ ] **Accessibilité — `aria-label` sur boutons icônes** — Boutons de lien externe (Homelab, Projects) sans label pour les lecteurs d'écran.
-- [ ] **Empty states contextuels** — Trail, Notes et Homelab n'affichent pas le filtre actif dans le message "Aucun résultat" (contrairement à Projects).
+- [x] **Remplacer les `alert()` par des toasts** — Composant Toast custom avec `ToastProvider`, remplace tous les `alert()` dans les 4 pages CRUD
+- [x] **Feedback de succès après sauvegarde** — Toast "success" après chaque ajout, modification et suppression sur les 4 pages CRUD
+- [x] **Accessibilité — `aria-label` sur boutons icônes** — Ajout `aria-label` sur le bouton lien externe Homelab (Projects avait déjà le sien)
+- [x] **Empty states contextuels** — Notes, Trail et Homelab affichent maintenant le filtre actif dans le message vide
 
 ## Améliorations moyennes
 

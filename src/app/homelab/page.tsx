@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/context/auth-context"
+import { useToast } from "@/components/toast"
 
 type ServiceCategory = "Virtualisation" | "Containers" | "Réseau" | "Sécurité" | "Productivité" | "Monitoring" | "Autre"
 
@@ -41,6 +42,7 @@ const EMPTY_FORM: Omit<Service, "id"> = {
 
 export default function HomelabPage() {
     const { user } = useAuth()
+    const { toast } = useToast()
     const supabase = useMemo(() => createClient(), [])
 
     const [services, setServices] = useState<Service[]>([])
@@ -85,8 +87,9 @@ export default function HomelabPage() {
     async function handleDelete(id: string) {
         if (!window.confirm("Supprimer ce service ?")) return
         const { error } = await supabase.from("homelab_services").delete().eq("id", id)
-        if (error) { alert("Erreur lors de la suppression."); return }
+        if (error) { toast("Erreur lors de la suppression.", "error"); return }
         setServices((prev) => prev.filter((s) => s.id !== id))
+        toast("Service supprimé", "success")
     }
 
     async function handleSubmit(e: React.FormEvent) {
@@ -99,12 +102,12 @@ export default function HomelabPage() {
             const { data, error } = await supabase
                 .from("homelab_services").update(form).eq("id", editingId).select().single()
             if (error) setFormError("Erreur lors de la modification.")
-            else { setServices((prev) => prev.map((s) => s.id === editingId ? data as Service : s)); setShowModal(false) }
+            else { setServices((prev) => prev.map((s) => s.id === editingId ? data as Service : s)); setShowModal(false); toast("Service modifié", "success") }
         } else {
             const { data, error } = await supabase
                 .from("homelab_services").insert(form).select().single()
             if (error) setFormError("Erreur lors de l'ajout.")
-            else { setServices((prev) => [data as Service, ...prev]); setShowModal(false) }
+            else { setServices((prev) => [data as Service, ...prev]); setShowModal(false); toast("Service ajouté", "success") }
         }
         setIsSaving(false)
     }
@@ -168,7 +171,7 @@ export default function HomelabPage() {
                                         {service.category}
                                     </span>
                                     {service.url && service.url !== "#" && (
-                                        <a href={service.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                                        <a href={service.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} aria-label={`Ouvrir ${service.name}`}>
                                             <Button variant="ghost" size="icon" className="h-7 w-7">
                                                 <ExternalLink className="h-3.5 w-3.5" />
                                             </Button>
