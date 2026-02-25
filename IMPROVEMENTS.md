@@ -14,10 +14,10 @@ Fichier de suivi des améliorations. Mis à jour après chaque implémentation.
 
 ## Améliorations moyennes
 
-- [ ] **Recherche textuelle sur Notes et Homelab** — Notes n'a qu'un filtre par tag, Homelab n'a aucun filtre. Ajouter un champ de recherche client-side.
+- [x] **Recherche textuelle sur Notes et Homelab** — Champ de recherche client-side sur titre+contenu (Notes) et nom+description (Homelab) + filtres par catégorie sur Homelab
 - [ ] **Hook `useCRUDTable` pour éliminer la duplication** — Les 4 pages CRUD répètent ~300 lignes de code identique (useState, useEffect, handlers). Extraire un hook custom.
-- [ ] **Skeleton loaders** — Remplacer "Chargement…" par des skeletons animés pour une meilleure perception de vitesse.
-- [ ] **Services — CTA email plus visible** — Le lien email sur `/services` est un simple lien bleu. Utiliser un `<Button>` avec icône.
+- [x] **Skeleton loaders** — Skeletons animés sur les 4 pages CRUD (Notes, Projects, Homelab, Trail) mimant la forme du contenu réel
+- [x] **Services — CTA email plus visible** — Bouton avec icône Mail remplace le simple lien bleu
 
 ## Nice to have
 

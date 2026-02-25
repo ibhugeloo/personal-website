@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { Plus, X } from "lucide-react"
+import { Plus, X, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { createClient } from "@/lib/supabase/client"
@@ -65,6 +65,7 @@ export default function NotesPage() {
     const [form, setForm] = useState<Omit<Note, "id" | "created_at">>(EMPTY_FORM)
     const [formError, setFormError] = useState<string | null>(null)
     const [filter, setFilter] = useState<NoteTag | "Tous">("Tous")
+    const [search, setSearch] = useState("")
 
     useEffect(() => {
         let isMounted = true
@@ -124,7 +125,14 @@ export default function NotesPage() {
         setIsSaving(false)
     }
 
-    const filtered = filter === "Tous" ? notes : notes.filter((n) => n.tag === filter)
+    const filtered = notes.filter((n) => {
+        if (filter !== "Tous" && n.tag !== filter) return false
+        if (search) {
+            const q = search.toLowerCase()
+            return n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)
+        }
+        return true
+    })
 
     return (
         <div className="space-y-5 max-w-2xl text-base leading-relaxed text-foreground">
@@ -142,24 +150,48 @@ export default function NotesPage() {
                 </Button>
             )}
 
-            <div className="flex flex-wrap gap-2">
-                {(["Tous", ...TAGS] as const).map((t) => (
-                    <button
-                        key={t}
-                        onClick={() => setFilter(t as NoteTag | "Tous")}
-                        className={`text-xs px-3 py-1 rounded-full border transition-colors ${
-                            filter === t
-                                ? "bg-foreground text-background border-foreground"
-                                : "border-border text-muted-foreground hover:border-foreground/50"
-                        }`}
-                    >
-                        {t}
-                    </button>
-                ))}
+            <div className="space-y-3">
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <input
+                        type="search"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Rechercher une note…"
+                        className="w-full border rounded-lg pl-9 pr-3 py-1.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    {(["Tous", ...TAGS] as const).map((t) => (
+                        <button
+                            key={t}
+                            onClick={() => setFilter(t as NoteTag | "Tous")}
+                            className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+                                filter === t
+                                    ? "bg-foreground text-background border-foreground"
+                                    : "border-border text-muted-foreground hover:border-foreground/50"
+                            }`}
+                        >
+                            {t}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {isLoading ? (
-                <p className="text-center py-16 text-muted-foreground text-sm">Chargement…</p>
+                <div className="space-y-4">
+                    {[...Array(3)].map((_, i) => (
+                        <div key={i} className="space-y-2 py-5">
+                            <div className="flex items-center gap-2">
+                                <div className="h-5 w-16 rounded-full bg-muted animate-pulse" />
+                                <div className="h-3 w-24 rounded bg-muted animate-pulse" />
+                            </div>
+                            <div className="h-4 w-3/4 rounded bg-muted animate-pulse" />
+                            <div className="h-3 w-full rounded bg-muted animate-pulse" />
+                            <div className="h-3 w-2/3 rounded bg-muted animate-pulse" />
+                        </div>
+                    ))}
+                </div>
             ) : fetchError ? (
                 <p className="text-center py-16 text-destructive text-sm">{fetchError}</p>
             ) : filtered.length === 0 ? (

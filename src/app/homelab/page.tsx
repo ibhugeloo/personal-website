@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { Plus, ExternalLink, X } from "lucide-react"
+import { Plus, ExternalLink, X, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
@@ -53,6 +53,8 @@ export default function HomelabPage() {
     const [editingId, setEditingId] = useState<string | null>(null)
     const [form, setForm] = useState<Omit<Service, "id">>(EMPTY_FORM)
     const [formError, setFormError] = useState<string | null>(null)
+    const [filter, setFilter] = useState<ServiceCategory | "Tous">("Tous")
+    const [search, setSearch] = useState("")
 
     useEffect(() => {
         let isMounted = true
@@ -112,6 +114,15 @@ export default function HomelabPage() {
         setIsSaving(false)
     }
 
+    const filtered = services.filter((s) => {
+        if (filter !== "Tous" && s.category !== filter) return false
+        if (search) {
+            const q = search.toLowerCase()
+            return s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q)
+        }
+        return true
+    })
+
     return (
         <div className="space-y-5 max-w-4xl text-base leading-relaxed text-foreground">
             <div className="space-y-2">
@@ -123,27 +134,66 @@ export default function HomelabPage() {
 
             <Separator />
 
-            {user && (
-                <Button onClick={openAdd} size="sm" className="gap-2 self-start">
-                    <Plus className="h-4 w-4" />
-                    Ajouter
-                </Button>
-            )}
+            <div className="space-y-3">
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <input
+                        type="search"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Rechercher un service…"
+                        className="w-full border rounded-lg pl-9 pr-3 py-1.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                </div>
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex flex-wrap gap-2">
+                        {(["Tous", ...CATEGORIES] as const).map((c) => (
+                            <button
+                                key={c}
+                                onClick={() => setFilter(c as ServiceCategory | "Tous")}
+                                className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+                                    filter === c
+                                        ? "bg-foreground text-background border-foreground"
+                                        : "border-border text-muted-foreground hover:border-foreground/50"
+                                }`}
+                            >
+                                {c}
+                            </button>
+                        ))}
+                    </div>
+                    {user && (
+                        <Button onClick={openAdd} size="sm" className="gap-2 shrink-0">
+                            <Plus className="h-4 w-4" />
+                            Ajouter
+                        </Button>
+                    )}
+                </div>
+            </div>
 
             {isLoading ? (
-                <div className="text-center py-16 text-muted-foreground">
-                    <p className="text-sm">Chargement…</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[...Array(6)].map((_, i) => (
+                        <div key={i} className="rounded-xl border p-5 space-y-3">
+                            <div className="flex items-center gap-2">
+                                <div className="h-8 w-8 rounded bg-muted animate-pulse" />
+                                <div className="h-4 w-24 rounded bg-muted animate-pulse" />
+                            </div>
+                            <div className="h-3 w-full rounded bg-muted animate-pulse" />
+                            <div className="h-3 w-2/3 rounded bg-muted animate-pulse" />
+                            <div className="h-5 w-20 rounded-full bg-muted animate-pulse" />
+                        </div>
+                    ))}
                 </div>
             ) : fetchError ? (
                 <div className="text-center py-16 text-destructive text-sm">{fetchError}</div>
-            ) : services.length === 0 ? (
+            ) : filtered.length === 0 ? (
                 <div className="text-center py-16 text-muted-foreground">
                     <p className="text-4xl mb-3" aria-hidden="true">🔧</p>
-                    <p>Aucun service configuré</p>
+                    <p>Aucun service{filter !== "Tous" ? ` dans la catégorie « ${filter} »` : ""}{search ? ` pour « ${search} »` : ""}</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {services.map((service) => (
+                    {filtered.map((service) => (
                         <Card
                             key={service.id}
                             className={`group relative hover:shadow-md transition-shadow overflow-hidden ${user ? "cursor-pointer" : ""}`}

@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { Separator } from "@/components/ui/separator"
+import { Mail } from "lucide-react"
 
 export const metadata: Metadata = {
     title: "Services",
@@ -118,9 +119,10 @@ export default function ServicesPage() {
                 </p>
                 <a
                     href="mailto:bhugeloo.idriss@gmail.com"
-                    className="inline-block mt-1 font-medium text-blue-600 hover:text-blue-700 transition-colors"
+                    className="inline-flex items-center gap-2 mt-2 px-4 py-2 rounded-lg bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity"
                 >
-                    bhugeloo.idriss@gmail.com →
+                    <Mail className="h-4 w-4" />
+                    bhugeloo.idriss@gmail.com
                 </a>
             </div>
         </div>

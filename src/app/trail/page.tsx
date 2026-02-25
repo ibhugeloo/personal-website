@@ -156,7 +156,18 @@ function GearInventory() {
             </div>
 
             {isLoading ? (
-                <p className="text-center py-10 text-muted-foreground text-sm">Chargement…</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[...Array(4)].map((_, i) => (
+                        <div key={i} className="flex items-start gap-3 p-3 rounded-lg border">
+                            <div className="h-8 w-8 rounded bg-muted animate-pulse shrink-0" />
+                            <div className="flex-1 space-y-2">
+                                <div className="h-4 w-28 rounded bg-muted animate-pulse" />
+                                <div className="h-3 w-16 rounded bg-muted animate-pulse" />
+                                <div className="h-5 w-14 rounded-full bg-muted animate-pulse" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
             ) : fetchError ? (
                 <p className="text-center py-10 text-destructive text-sm">{fetchError}</p>
             ) : filtered.length === 0 ? (
