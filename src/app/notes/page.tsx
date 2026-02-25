@@ -238,6 +238,7 @@ export default function NotesPage() {
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="notes-modal-title"
+                    aria-describedby="notes-modal-desc"
                     onClick={() => setShowModal(false)}
                 >
                     <div className="bg-background border rounded-xl shadow-xl w-full max-w-lg p-6 space-y-5" onClick={(e) => e.stopPropagation()}>
@@ -249,6 +250,9 @@ export default function NotesPage() {
                                 <X className="h-4 w-4" />
                             </Button>
                         </div>
+                        <p id="notes-modal-desc" className="sr-only">
+                            {editingId ? "Formulaire de modification d'une note existante" : "Formulaire de création d'une nouvelle note"}
+                        </p>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="space-y-1">
                                 <label className="text-xs text-muted-foreground">Titre <span className="opacity-50">(optionnel)</span></label>

@@ -302,6 +302,7 @@ export default function ProjectsPage() {
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="projects-modal-title"
+                    aria-describedby="projects-modal-desc"
                     onClick={() => setShowModal(false)}
                 >
                     <div className="bg-background border rounded-xl shadow-xl w-full max-w-lg p-6 space-y-5" onClick={(e) => e.stopPropagation()}>
@@ -313,6 +314,9 @@ export default function ProjectsPage() {
                                 <X className="h-4 w-4" />
                             </Button>
                         </div>
+                        <p id="projects-modal-desc" className="sr-only">
+                            {editingId ? "Formulaire de modification d'un projet existant" : "Formulaire de création d'un nouveau projet"}
+                        </p>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="grid grid-cols-[auto_1fr] gap-3 items-end">
                                 <div className="space-y-1">

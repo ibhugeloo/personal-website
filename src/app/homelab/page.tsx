@@ -240,6 +240,7 @@ export default function HomelabPage() {
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="homelab-modal-title"
+                    aria-describedby="homelab-modal-desc"
                     onClick={() => setShowModal(false)}
                 >
                     <div className="bg-background border rounded-xl shadow-xl w-full max-w-md p-6 space-y-5" onClick={(e) => e.stopPropagation()}>
@@ -251,6 +252,9 @@ export default function HomelabPage() {
                                 <X className="h-4 w-4" />
                             </Button>
                         </div>
+                        <p id="homelab-modal-desc" className="sr-only">
+                            {editingId ? "Formulaire de modification d'un service existant" : "Formulaire d'ajout d'un nouveau service homelab"}
+                        </p>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="grid grid-cols-[auto_1fr] gap-3 items-center">
                                 <div className="space-y-1">

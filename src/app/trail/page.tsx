@@ -214,6 +214,7 @@ function GearInventory() {
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="trail-modal-title"
+                    aria-describedby="trail-modal-desc"
                     onClick={() => setShowModal(false)}
                 >
                     <div className="bg-background border rounded-xl shadow-xl w-full max-w-md p-6 space-y-5" onClick={(e) => e.stopPropagation()}>
@@ -225,6 +226,9 @@ function GearInventory() {
                                 <X className="h-4 w-4" />
                             </Button>
                         </div>
+                        <p id="trail-modal-desc" className="sr-only">
+                            {editingId ? "Formulaire de modification d'un équipement existant" : "Formulaire d'ajout d'un nouvel équipement trail"}
+                        </p>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1">
